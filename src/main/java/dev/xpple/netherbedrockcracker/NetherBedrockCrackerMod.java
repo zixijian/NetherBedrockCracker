@@ -34,9 +34,16 @@ public class NetherBedrockCrackerMod implements ClientModInitializer {
             Optional<Path> libraryPath = Optional.empty();
 
             if (osArch.contains("aarch64") || osArch.contains("arm64")) {
-                if (osName.contains("android")) {
+                boolean isAndroid = osName.contains("android")
+                        || System.getProperty("java.vendor", "").toLowerCase().contains("android")
+                        || System.getProperty("java.vm.vendor", "").toLowerCase().contains("android")
+                        || System.getProperty("java.runtime.name", "").toLowerCase().contains("android")
+                        || System.getenv("ANDROID_ROOT") != null
+                        || System.getenv("ANDROID_DATA") != null;
+
+                if (isAndroid) {
                     libraryPath = modContainer.findPath("libbedrockcracker_android_arm64.so");
-                } else if (osName.contains("linux")) {
+                } else {
                     libraryPath = modContainer.findPath("libbedrockcracker_linux_arm64.so");
                 }
             }

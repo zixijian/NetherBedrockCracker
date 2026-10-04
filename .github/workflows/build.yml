@@ -24,15 +24,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           submodules: 'true'
-
-      - name: Setup Android NDK (ubuntu-latest)
-        if: matrix.os == 'ubuntu-latest'
-        uses: nsetup/setup-ndk@v1
-        with:
-          ndk-version: r27b
 
       - name: Install cargo-ndk and cross-compiler (ubuntu-latest)
         if: matrix.os == 'ubuntu-latest'
@@ -47,7 +41,7 @@ jobs:
         run: |
           rustup target add aarch64-linux-android aarch64-unknown-linux-gnu
           cargo build --release
-          cargo ndk -t arm64-v8a build --release
+          ANDROID_NDK_HOME=$ANDROID_NDK_LATEST_HOME cargo ndk -t arm64-v8a -p 21 build --release
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc cargo build --release --target aarch64-unknown-linux-gnu
           mv target/release/libbedrockcracker.so ../resources/libbedrockcracker.so
           mv target/aarch64-linux-android/release/libbedrockcracker.so ../resources/libbedrockcracker_android_arm64.so
@@ -81,7 +75,7 @@ jobs:
 
       - name: Capture shared library (ubuntu-latest)
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: libbedrockcracker.so
           path: |
@@ -90,13 +84,13 @@ jobs:
             src/main/resources/libbedrockcracker_linux_arm64.so
       - name: Capture shared library (macos-latest)
         if: matrix.os == 'macos-latest'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: libbedrockcracker.dylib
           path: src/main/resources/libbedrockcracker.dylib
       - name: Capture shared library (windows-latest)
         if: matrix.os == 'windows-latest'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: bedrockcracker.dll
           path: src/main/resources/bedrockcracker.dll
@@ -109,18 +103,18 @@ jobs:
       LLVM_HOME: /usr/lib/llvm-13
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           submodules: 'true'
       - name: Capture shared library
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           merge-multiple: true
           path: src/main/resources/
       - name: Validate gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
       - name: Setup JDK 25
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           java-version: 25
           distribution: 'temurin'
@@ -142,7 +136,7 @@ jobs:
       - name: Build
         run: ./gradlew build
       - name: Capture build artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: NetherBedrockCracker
           path: build/libs/
@@ -153,7 +147,7 @@ jobs:
     if: github.event.action == 'published'
     steps:
       - name: Capture mod
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           name: NetherBedrockCracker
           path: build/libs/
