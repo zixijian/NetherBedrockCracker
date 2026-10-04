@@ -1,5 +1,9 @@
 package dev.xpple.netherbedrockcracker.command;
 
+import com.mojang.brigadier.StringReader;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
+import dev.xpple.clientarguments.arguments.CDimensionArgument;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -7,12 +11,13 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.ClientSuggestionProvider;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.permissions.PermissionSet;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -22,23 +27,23 @@ import java.util.Map;
 
 public class CustomClientCommandSource extends ClientSuggestionProvider implements FabricClientCommandSource {
 
+    private static final DynamicCommandExceptionType UNKNOWN_DIMENSION_EXCEPTION = new DynamicCommandExceptionType(dimension -> Component.translatableEscape("argument.dimension.invalid", dimension));
+
     private final Minecraft client;
     private final Entity entity;
     private final Vec3 position;
     private final Vec2 rotation;
-    private final ClientLevel level;
-    private final boolean attended;
+    private final ClientLevel world;
     private final Map<String, Object> meta;
 
-    public CustomClientCommandSource(ClientPacketListener listener, Minecraft minecraft, Entity entity, Vec3 position, Vec2 rotation, ClientLevel level, boolean attended, PermissionSet permissionSet, Map<String, Object> meta) {
+    public CustomClientCommandSource(ClientPacketListener listener, Minecraft minecraft, Entity entity, Vec3 position, Vec2 rotation, ClientLevel world, PermissionSet permissionSet, Map<String, Object> meta) {
         super(listener, minecraft, permissionSet);
 
         this.client = minecraft;
         this.entity = entity;
         this.position = position;
         this.rotation = rotation;
-        this.level = level;
-        this.attended = attended;
+        this.world = world;
         this.meta = meta;
     }
 
@@ -46,12 +51,12 @@ public class CustomClientCommandSource extends ClientSuggestionProvider implemen
         if (source instanceof CustomClientCommandSource custom) {
             return custom;
         }
-        return new CustomClientCommandSource(source.getClient().getConnection(), source.getClient(), source.getEntity(), source.getPosition(), source.getRotation(), source.getLevel(), source.attended(), source.permissions(), new HashMap<>());
+        return new CustomClientCommandSource(source.getClient().getConnection(), source.getClient(), source.getEntity(), source.getPosition(), source.getRotation(), source.getWorld(), source.permissions(), new HashMap<>());
     }
 
     @Override
     public void sendFeedback(Component message) {
-        this.client.gui.hud.getChat().addClientSystemMessage(message);
+        this.client.gui.getChat().addMessage(message);
         this.client.getNarrator().saySystemChatQueued(message);
     }
 
@@ -86,8 +91,8 @@ public class CustomClientCommandSource extends ClientSuggestionProvider implemen
     }
 
     @Override
-    public ClientLevel getLevel() {
-        return this.level;
+    public ClientLevel getWorld() {
+        return this.world;
     }
 
     @Override
@@ -95,25 +100,20 @@ public class CustomClientCommandSource extends ClientSuggestionProvider implemen
         return this.meta.get(key);
     }
 
-    @Override
-    public boolean attended() {
-        return this.attended;
-    }
-
     public CustomClientCommandSource withEntity(Entity entity) {
-        return new CustomClientCommandSource(this.client.getConnection(), this.client, entity, this.position, this.rotation, this.level, this.attended, this.permissions(), this.meta);
+        return new CustomClientCommandSource(this.client.getConnection(), this.client, entity, this.position, this.rotation, this.world, this.permissions(), this.meta);
     }
 
     public CustomClientCommandSource withPosition(Vec3 position) {
-        return new CustomClientCommandSource(this.client.getConnection(), this.client, this.entity, position, this.rotation, this.level, this.attended, this.permissions(), this.meta);
+        return new CustomClientCommandSource(this.client.getConnection(), this.client, this.entity, position, this.rotation, this.world, this.permissions(), this.meta);
     }
 
     public CustomClientCommandSource withRotation(Vec2 rotation) {
-        return new CustomClientCommandSource(this.client.getConnection(), this.client, this.entity, this.position, rotation, this.level, this.attended, this.permissions(), this.meta);
+        return new CustomClientCommandSource(this.client.getConnection(), this.client, this.entity, this.position, rotation, this.world, this.permissions(), this.meta);
     }
 
-    public CustomClientCommandSource withLevel(ClientLevel level) {
-        return new CustomClientCommandSource(this.client.getConnection(), this.client, this.entity, this.position, this.rotation, level, this.attended, this.permissions(), this.meta);
+    public CustomClientCommandSource withWorld(ClientLevel world) {
+        return new CustomClientCommandSource(this.client.getConnection(), this.client, this.entity, this.position, this.rotation, world, this.permissions(), this.meta);
     }
 
     public CustomClientCommandSource withMeta(String key, Object value) {
@@ -122,19 +122,16 @@ public class CustomClientCommandSource extends ClientSuggestionProvider implemen
     }
 
     @SuppressWarnings("unchecked")
-    public ResourceKey<Level> getDimension() {
+    public ResourceKey<Level> getDimension() throws CommandSyntaxException {
         Object dimensionMeta = this.getMeta("dimension");
         if (dimensionMeta != null) {
             return (ResourceKey<Level>) dimensionMeta;
         }
-        return inferDimension(this.level.dimensionType());
-    }
-
-    private static ResourceKey<Level> inferDimension(DimensionType dimensionType) {
-        return switch (dimensionType.skybox()) {
-            case NONE -> Level.NETHER;
-            case OVERWORLD -> Level.OVERWORLD;
-            case END -> Level.END;
-        };
+        String dimensionString = this.getWorld().dimension().identifier().getPath();
+        Identifier identifier = CDimensionArgument.dimension().parse(new StringReader(dimensionString));
+        ResourceKey<Level> resourceKey = ResourceKey.create(Registries.DIMENSION, identifier);
+        return this.levels().stream()
+            .filter(key -> key.registry().equals(resourceKey.registry()) && key.identifier().equals(resourceKey.identifier()))
+            .findAny().orElseThrow(() -> UNKNOWN_DIMENSION_EXCEPTION.create(identifier));
     }
 }

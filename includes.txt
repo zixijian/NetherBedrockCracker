@@ -8,3 +8,4 @@
 --include-constant OTHER
 --include-constant Paper1_18
 --include-constant StructureSeed
+--include-constant WorldSeed
