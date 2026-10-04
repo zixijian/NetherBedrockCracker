@@ -9,7 +9,7 @@ public abstract class CreateJavaBindingsTask extends Exec {
 
     {
         // always run task
-        this.getOutputs().upToDateWhen(_ -> false);
+        this.getOutputs().upToDateWhen(task -> false);
 
         this.setWorkingDir(this.getProject().getRootDir());
         this.setStandardOutput(System.out);
