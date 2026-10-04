@@ -29,15 +29,11 @@ jobs:
         with:
           submodules: 'true'
 
-      - name: Setup Android NDK (ubuntu-latest)
-        if: matrix.os == 'ubuntu-latest'
-        uses: n2o/setup-ndk@v3
-        with:
-          ndk-version: r26b
-
       - name: Compile shared library for Android arm64 (ubuntu-latest)
         if: matrix.os == 'ubuntu-latest'
         working-directory: src/main/rust
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
         run: |
           rustup target add aarch64-linux-android
           cargo install cargo-ndk
