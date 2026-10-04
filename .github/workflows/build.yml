@@ -32,9 +32,8 @@ jobs:
       - name: Compile shared library for Android arm64 (ubuntu-latest)
         if: matrix.os == 'ubuntu-latest'
         working-directory: src/main/rust
-        env:
-          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
         run: |
+          export ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$ANDROID_NDK_ROOT}"
           rustup target add aarch64-linux-android
           cargo install cargo-ndk
           cargo ndk -t aarch64-linux-android -o ../resources build --release
