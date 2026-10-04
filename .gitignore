@@ -30,7 +30,6 @@ src/main/resources/bedrockcracker.dll
 src/main/resources/libbedrockcracker.dylib
 src/main/resources/libbedrockcracker.so
 
-src/main/java/com/github/netherbedrockcracker/*
-!src/main/java/com/github/netherbedrockcracker/.gitkeep
+src/main/java/com/github/netherbedrockcracker
 
 dump_includes.txt
