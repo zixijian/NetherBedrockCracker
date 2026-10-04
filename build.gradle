@@ -2,14 +2,14 @@ import dev.xpple.netherbedrockcracker.buildscript.CreateHeaderFileTask
 import dev.xpple.netherbedrockcracker.buildscript.CreateJavaBindingsTask
 
 plugins {
-    id 'net.fabricmc.fabric-loom' version "${fabric_loom_version}"
+    id 'fabric-loom' version "${fabric_loom_version}"
+    id 'maven-publish'
 }
-
-version = project.mod_version
-group = project.maven_group
 
 base {
     archivesName = project.archives_base_name
+    version = project.mod_version
+    group = project.maven_group
 }
 
 loom {
@@ -23,8 +23,8 @@ repositories {
         url = 'https://maven.xpple.dev/maven2'
     }
     maven {
-        name = 'SeedFinding'
-        url = 'https://nexus.seedfinding.com/repository/maven-seedfinding-snapshots'
+        name = 'ParchmentMC'
+        url = 'https://maven.parchmentmc.org'
     }
     maven {
         name = 'DJtheRedstoner'
@@ -34,15 +34,20 @@ repositories {
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    implementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+    mappings loom.layered {
+        officialMojangMappings {
+            nameSyntheticMembers = true
+        }
+        parchment "org.parchmentmc.data:${project.parchment_mappings}"
+    }
+    modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
 
-    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
-    include implementation("dev.xpple:clientarguments:${project.clientarguments_version}")
+    include modImplementation("dev.xpple:clientarguments:${project.clientarguments_version}")
+    include modImplementation("dev.xpple:betterconfig-fabric:${project.betterconfig_version}")
 
-    include implementation("com.seedfinding:mc_core:${project.mc_core_version}")
-
-    runtimeOnly("me.djtheredstoner:DevAuth-fabric:${project.devauth_version}") {
+    modRuntimeOnly('me.djtheredstoner:DevAuth-fabric:1.2.1') {
         exclude group: 'net.fabricmc', module: 'fabric-loader'
     }
 
@@ -58,7 +63,7 @@ tasks.register('createHeaderFileTask', CreateHeaderFileTask) {}
 createJavaBindings.dependsOn('createHeaderFileTask')
 
 processResources {
-    def props = [version: project.mod_version, minecraft_dependency_version: project.minecraft_dependency_version, loader_version: project.fabric_loader_version]
+    def props = [version: project.mod_version, loader_version: project.fabric_loader_version]
     filteringCharset = "UTF-8"
 
     filesMatching("fabric.mod.json") {
@@ -75,14 +80,26 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 25
+    it.options.release = 21
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
 
 test {
     useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = project.base.archivesName.get()
+            from components.java
+        }
+    }
+
+    repositories {
+    }
 }

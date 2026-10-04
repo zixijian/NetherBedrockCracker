@@ -7,11 +7,13 @@ on:
   push:
     branches:
       - master
+      - dev
+      - '**'
   pull_request:
     branches:
       - master
-  release:
-    types: [published]
+      - dev
+  workflow_dispatch:
 
 jobs:
   compile-nbc:
@@ -22,7 +24,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           submodules: 'true'
 
@@ -30,8 +32,11 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         working-directory: src/main/rust
         run: |
-          cargo build --release
-          mv target/release/libbedrockcracker.so ../resources
+          rustup target add aarch64-linux-android
+          cargo install cargo-ndk
+          export ANDROID_NDK_HOME="${ANDROID_NDK_LATEST_HOME:-$ANDROID_NDK_ROOT}"
+          cargo ndk -t arm64-v8a build --release
+          mv target/aarch64-linux-android/release/libbedrockcracker.so ../resources
       - name: Compile shared library (macos-latest)
         if: matrix.os == 'macos-latest'
         working-directory: src/main/rust
@@ -58,45 +63,45 @@ jobs:
 
       - name: Capture shared library (ubuntu-latest)
         if: matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: libbedrockcracker.so
           path: src/main/resources/libbedrockcracker.so
       - name: Capture shared library (macos-latest)
         if: matrix.os == 'macos-latest'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: libbedrockcracker.dylib
           path: src/main/resources/libbedrockcracker.dylib
       - name: Capture shared library (windows-latest)
         if: matrix.os == 'windows-latest'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: bedrockcracker.dll
           path: src/main/resources/bedrockcracker.dll
 
   build:
-    name: Build Nether Bedrock Cracker mod
+    name: Build Nether Bedrock Cracker Mod
     needs: compile-nbc
     runs-on: ubuntu-latest
     env:
       LLVM_HOME: /usr/lib/llvm-13
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           submodules: 'true'
       - name: Capture shared library
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           merge-multiple: true
           path: src/main/resources/
       - name: Validate gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
-      - name: Setup JDK 25
-        uses: actions/setup-java@v5
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
         with:
-          java-version: 25
+          java-version: 21
           distribution: 'temurin'
       - name: Make Gradle wrapper executable
         run: |
@@ -109,31 +114,17 @@ jobs:
           sudo mv clang+llvm-13.0.0-x86_64-linux-gnu-ubuntu-20.04 $LLVM_HOME
       - name: Compile jextract
         working-directory: jextract
-        run: ./gradlew --stacktrace -Pjdk_home=$JAVA_HOME -Pllvm_home=$LLVM_HOME clean verify
+        run: |
+          sed -i 's/options.release = 23/options.release = 21/g' build.gradle
+          sed -i 's/def jextract_version = "23"/def jextract_version = "21"/g' build.gradle
+          ./gradlew --stacktrace -Pjdk_home=$JAVA_HOME -Pllvm_home=$LLVM_HOME clean verify
       - name: Install cbindgen
         working-directory: src/main/rust
         run: cargo install --force cbindgen
       - name: Build
         run: ./gradlew build
       - name: Capture build artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: NetherBedrockCracker
           path: build/libs/
-  add-release-asset:
-    name: Add release asset
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event.action == 'published'
-    steps:
-      - name: Capture mod
-        uses: actions/download-artifact@v8
-        with:
-          name: NetherBedrockCracker
-          path: build/libs/
-      - name: Add release asset
-        uses: softprops/action-gh-release@v2
-        with:
-          files: build/libs/*.jar
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
