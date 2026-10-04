@@ -7,9 +7,11 @@ on:
   push:
     branches:
       - master
+      - dev
   pull_request:
     branches:
       - master
+      - dev
   release:
     types: [published]
 
@@ -26,12 +28,30 @@ jobs:
         with:
           submodules: 'true'
 
+      - name: Setup Android NDK (ubuntu-latest)
+        if: matrix.os == 'ubuntu-latest'
+        uses: nsetup/setup-ndk@v1
+        with:
+          ndk-version: r27b
+
+      - name: Install cargo-ndk and cross-compiler (ubuntu-latest)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          cargo install cargo-ndk
+
       - name: Compile shared library (ubuntu-latest)
         if: matrix.os == 'ubuntu-latest'
         working-directory: src/main/rust
         run: |
+          rustup target add aarch64-linux-android aarch64-unknown-linux-gnu
           cargo build --release
-          mv target/release/libbedrockcracker.so ../resources
+          cargo ndk -t arm64-v8a build --release
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc cargo build --release --target aarch64-unknown-linux-gnu
+          mv target/release/libbedrockcracker.so ../resources/libbedrockcracker.so
+          mv target/aarch64-linux-android/release/libbedrockcracker.so ../resources/libbedrockcracker_android_arm64.so
+          mv target/aarch64-unknown-linux-gnu/release/libbedrockcracker.so ../resources/libbedrockcracker_linux_arm64.so
       - name: Compile shared library (macos-latest)
         if: matrix.os == 'macos-latest'
         working-directory: src/main/rust
@@ -48,7 +68,10 @@ jobs:
           mv target/release/bedrockcracker.dll ../resources
       - name: Compute SHA256 hash (ubuntu-latest)
         if: matrix.os == 'ubuntu-latest'
-        run: sha256sum src/main/resources/libbedrockcracker.so
+        run: |
+          sha256sum src/main/resources/libbedrockcracker.so
+          sha256sum src/main/resources/libbedrockcracker_android_arm64.so
+          sha256sum src/main/resources/libbedrockcracker_linux_arm64.so
       - name: Compute SHA256 hash (macos-latest)
         if: matrix.os == 'macos-latest'
         run: shasum -a 256 src/main/resources/libbedrockcracker.dylib
@@ -61,7 +84,10 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: libbedrockcracker.so
-          path: src/main/resources/libbedrockcracker.so
+          path: |
+            src/main/resources/libbedrockcracker.so
+            src/main/resources/libbedrockcracker_android_arm64.so
+            src/main/resources/libbedrockcracker_linux_arm64.so
       - name: Capture shared library (macos-latest)
         if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v7
