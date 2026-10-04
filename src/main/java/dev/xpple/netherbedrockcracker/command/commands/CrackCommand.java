@@ -182,14 +182,12 @@ public class CrackCommand {
     }
 
     private static void sendFeedback(MutableComponent component) {
-        MutableComponent prefix = ComponentUtils.wrapInSquareBrackets(Component.literal(NetherBedrockCrackerMod.MOD_NAME).withStyle(ChatFormatting.DARK_PURPLE));
-        Component prefixed = prefix.append(" ").append(component);
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {
-            NetherBedrockCrackerMod.LOGGER.info(prefixed.getString());
+            NetherBedrockCrackerMod.LOGGER.info(component.getString());
             return;
         }
-        Minecraft.getInstance().schedule(() -> player.sendSystemMessage(prefixed));
+        Minecraft.getInstance().schedule(() -> player.sendSystemMessage(component));
     }
 
     private static void sendError(MutableComponent component) {

@@ -16,11 +16,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Optional;
 
 public class NetherBedrockCrackerMod implements ClientModInitializer {
 
     public static final String MOD_ID = "netherbedrockcracker";
-    public static final String MOD_NAME = "NetherBedrockCracker";
     public static final Logger LOGGER = LogUtils.getLogger();
 
     static {
@@ -29,7 +29,34 @@ public class NetherBedrockCrackerMod implements ClientModInitializer {
         Path tempFile;
         try {
             tempFile = Files.createTempFile(libraryName, "");
-            Files.copy(modContainer.findPath(libraryName).orElseThrow(), tempFile, StandardCopyOption.REPLACE_EXISTING);
+            String osName = System.getProperty("os.name", "").toLowerCase();
+            String osArch = System.getProperty("os.arch", "").toLowerCase();
+            Optional<Path> libraryPath = Optional.empty();
+
+            if (osArch.contains("aarch64") || osArch.contains("arm64")) {
+                boolean isAndroid = osName.contains("android")
+                        || System.getProperty("java.vendor", "").toLowerCase().contains("android")
+                        || System.getProperty("java.vm.vendor", "").toLowerCase().contains("android")
+                        || System.getProperty("java.runtime.name", "").toLowerCase().contains("android")
+                        || System.getenv("ANDROID_ROOT") != null
+                        || System.getenv("ANDROID_DATA") != null;
+
+                if (isAndroid) {
+                    libraryPath = modContainer.findPath("libbedrockcracker_android_arm64.so");
+                } else {
+                    libraryPath = modContainer.findPath("libbedrockcracker_linux_arm64.so");
+                }
+            }
+            if (libraryPath.isEmpty()) {
+                libraryPath = modContainer.findPath(libraryName);
+            }
+            if (libraryPath.isEmpty()) {
+                libraryPath = modContainer.findPath("libbedrockcracker_android_arm64.so");
+            }
+            if (libraryPath.isEmpty()) {
+                libraryPath = modContainer.findPath("libbedrockcracker_linux_arm64.so");
+            }
+            Files.copy(libraryPath.orElseThrow(() -> new RuntimeException("Could not find native library " + libraryName)), tempFile, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
