@@ -20,9 +20,9 @@ jobs:
           submodules: 'true'
 
       - name: Setup Android NDK
-        uses: nintendoadam/setup-ndk@v2
-        with:
-          ndk-version: r26b
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;25.2.9519653"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/25.2.9519653" >> $GITHUB_ENV
 
       - name: Add Rust Target
         run: rustup target add aarch64-linux-android
