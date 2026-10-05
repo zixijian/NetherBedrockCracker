@@ -27,9 +27,11 @@
   "accessWidener": "netherbedrockcracker.aw",
 
   "depends": {
+    "java": ">=23",
     "fabricloader": ">=${loader_version}",
     "fabric-api": ">=0.37.1",
-    "minecraft": "${minecraft_dependency_version}",
+    "minecraft": ">=1.21.2 <1.22",
+    "betterconfig": "*",
     "clientarguments": "*"
   }
 }
